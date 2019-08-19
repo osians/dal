@@ -1,0 +1,27 @@
+{
+    "name" : "osians/dal",
+    "type": "library",
+    "description": "PHP/DAL - Database abstract layer",
+    "keywords": ["PHP", "Database", "Doctrine", "ORM", "MYSQL", "PDO"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Wanderlei Santana do Nascimento",
+            "email": "sans.pds@gmail.com",
+            "role": "Creator / Main Developer",
+            "homepage": "http://sooho.com.br"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0"
+    },
+    "suggest": {
+        "doctrine/orm": "For Doctrine usage",
+        "gabordemooij/redbean": "For RedBean usage"
+    },
+    "autoload": {
+        "psr-4": {
+            "Osians\\Db\\": "src/"
+        }
+    }
+}
