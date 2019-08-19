@@ -4,8 +4,9 @@ namespace Osians\Dal;
 
 
 /**
- * Interface ModelInterface
- * @package Osians\Dal
+ *    Model Interface
+ *
+ *    @package Osians\Dal
  */
 interface ModelInterface
 {

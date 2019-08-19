@@ -2,7 +2,6 @@
 
 namespace Osians\Dal;
 
-
 use Iterator;
 
 /**

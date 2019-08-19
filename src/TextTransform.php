@@ -165,3 +165,4 @@ class TextTransform
             return $count . " " . self::pluralize($string);
     }
 }
+

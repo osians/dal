@@ -2,7 +2,6 @@
 
 namespace Osians\Dal;
 
-
 /**
  * Interface ResultInterface
  * @package Osians\Dal

@@ -569,3 +569,4 @@ class DoctrineModel extends DoctrineConstructor implements ModelInterface
         return $this;
     }
 } 
+
