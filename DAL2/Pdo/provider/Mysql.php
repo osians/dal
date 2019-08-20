@@ -80,6 +80,11 @@ class Mysql implements DatabaseProviderInterface
         }
     }
 
+    public function desconectar()
+    {
+        
+    }
+    
     public function getExceptionByCode($eCode)
     {
         switch ($eCode) {

@@ -5,4 +5,5 @@ namespace Osians\Dal;
 interface DatabaseProviderInterface
 {
     public function conectar();
+    public function desconectar();
 }
