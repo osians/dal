@@ -1,12 +1,12 @@
 <?php
 
-require_once __DIR__ . 'Usuario.php';
 require_once __DIR__ . '/../DAL2/Model.php';
 require_once __DIR__ . '/../DAL2/ModelInterface.php';
 require_once __DIR__ . '/../DAL2/DatabaseProviderInterface.php';
-require_once __DIR__ . '/../DAL2/Pdo/Model.php';
+require_once __DIR__ . '/../DAL2/Pdo/PdoModel.php';
 require_once __DIR__ . '/../DAL2/Pdo/provider/Mysql.php';
 require_once __DIR__ . '/../DAL2/DatabaseFactory.php';
+require_once __DIR__ . '/Usuario.php';
 
 use Osians\Dal\DatabaseFactory;
 

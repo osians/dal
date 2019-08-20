@@ -13,7 +13,7 @@ class DatabaseFactory
      **/
     public static function create($options = array())
     {
-        $this->isValid($options);
+        self::isValid($options);
 
         $class = "\Osians\Dal\Pdo\Provider\\{$options['driver']}";
         $database = new $class($options);
@@ -30,7 +30,7 @@ class DatabaseFactory
      *
      *    @return boolean
      */
-    protected function isValid($options)
+    protected static function isValid($options)
     {
         if (!isset($options['driver'])) {
             throw new \Exception('Missing driver name');

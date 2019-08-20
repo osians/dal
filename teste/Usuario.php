@@ -1,11 +1,13 @@
 <?php
 
+use Osians\Dal\Model;
+
 /**
  * Class Usuario
  * @Entity
  * @Table(name="usuario")
  */
-class Usuario extends \Osians\dal\Model
+class Usuario extends Model
 {
     /**
      * @Id

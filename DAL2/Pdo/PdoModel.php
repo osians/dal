@@ -4,50 +4,8 @@ namespace Osians\Dal\Pdo;
 
 use Osians\Dal\ModelInterface;
 
-/**
- *
- * CLASSE SYS_DB RESPONSAVEL POR FAZER A INTERFACE COM O BANCO DE DADOS,
- * NO CASO, O PADRAO E' USO COM MYSQL, POREM, PODENDO SER USADO COM SQLITE.
- * OUTRAS INTERFACES PODEM SER ADICIONADAS DE FORMA SIMPLES.
- *
- *
- * [MODO DE USO]
- *
- * # exemplo 1 (Usando valores Default, definidos no arquivo de Config)
- * $database = DBFactory::create( 'MySQL' );
- *
- * # exemplo 2 (definindo valores manualmente )
- * $database = DBFactory::create( 'MySQL', array('host' => '127.0.0.1','dbport' => '3306','user' => 'wandeco','pass' => 'sans','dbname' => 'nome_banco_dados') );
- *
- * # exemplo 3 (Usando valores Default, definidos no arquivo de Config)
- * $database = DBFactory::create( 'SQLite' );
- *
- * # exemplo 4 (definindo valores manualmente )
- * $database = DBFactory::create( 'SQLite', array( 'dbpath' => '/caminho/arquivo/','dbname' => 'database.sqlite' ) );
- *
- * # Inserindo registros ...
- * $database->query('INSERT INTO mytable (FName, LName, Age, Gender) VALUES (:fname, :lname, :age, :gender)');
- *
- * $database->bind(':fname', 'John');
- * $database->bind(':lname', 'Smith');
- * $database->bind(':age', '24');
- * $database->bind(':gender', 'male');
- *
- * $database->execute();
- *
- * echo $database->lastInsertId();
- *
- * ================================= SELECT ====================
- * $database->query('SELECT FName, LName, Age, Gender FROM mytable WHERE FName = :fname');
- * $database->bind(':fname', 'Jenny');
- * $row = $database->single();
- *
- * @author Wanderlei Santana <sans.pds@gmail.com>
- * @package sys_db
- *
- */
 
-class Model implements ModelInterface
+class PdoModel implements ModelInterface
 {
     protected $pdo;
     protected $error;
@@ -80,6 +38,44 @@ class Model implements ModelInterface
     }
 
     /**
+     * @return mixed
+     */
+    public function getTable()
+    {
+        return $this->table;
+    }
+
+    /**
+     * @return null
+     */
+    public function repo()
+    {
+        if (isset($this->options['repositories']) 
+        && is_array($this->options['repositories'])) {
+            foreach($this->options['repositories'] as $repo) {
+                
+                $class = explode('\\', $this->class);
+                $class = end($class);
+
+                if (is_file(rtrim($repo['path'], '/') . '/' . $class . 'Repository.php')) {
+                    $class = $repo['namespace']  . $class . 'Repository';
+                    return new $class();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getOrm()
+    {
+        return $this->pdo;
+    }
+
+    /**
      *    Realiza uma consulta SQL
      * @param $sql
      * @param array $params
@@ -93,15 +89,6 @@ class Model implements ModelInterface
 
         $results = $this->pdo->query($sql);
         return $results->fetchAll(PDO::FETCH_OBJ);
-    }
-
-    /**
-     *    @see ModelInterface::all();
-     */
-    public function all()
-    {
-        $results = $this->pdo->query("SELECT * FROM {$this->table}");
-        return new IteratorResult($results->fetchAll(PDO::FETCH_OBJ));
     }
 
     public function bind($param, $value, $type = null)
@@ -158,38 +145,266 @@ class Model implements ModelInterface
         return $retorno;
     }
 
-    //    talvez remover
-    public function selectFirst($sql, $bind = array())
+    /**
+     *    @see ModelInterface::all()
+     */
+    public function all()
     {
-        return $this->select($sql, $bind, true, true);
+        $results = $this->pdo->query(
+            "SELECT * FROM {$this->table}"
+        );
+
+        return new IteratorResult(
+            $results->fetchAll(PDO::FETCH_OBJ));
     }
 
-    public function select(
-        $sql,
-        $bind = array(),
-        $asObject = true,
-        $firstOnly = false
+    /**
+     *    @see ModelInterface::find()
+     */
+    public function find($id)
+    {
+        $result = $this->pdo->prepare(
+            "SELECT * FROM {$this->table} WHERE id = :id"
+        );
+
+        $result->bindValue('id', $id, PDO::PARAM_INT);
+        $result->execute();
+
+        return new PdoSingleResult(
+            $result->fetch(PDO::FETCH_OBJ),
+            function(){
+                return $this;
+            }
+        );
+    }
+    
+    /**
+     *    Recebe N Strings, sendo estas nomes de colunas
+     *    @see ModelInterface::select()
+     **/
+    public function select()
+    {
+        $args = func_get_args();
+
+        $this->sql = "SELECT";
+        $this->sql.= (count($args) == 0)
+                   ? ' * ' : implode(', ', $args);
+        $this->sql.= " FROM {$this->table}";
+
+        return $this;
+    }
+
+    /**
+     *    @see ModelInterface::where()
+     */
+    public function where(
+        $key, 
+        $operator = null, 
+        $value = null, 
+        $boolean = "AND"
     ) {
-        $this->stmt = $this->pdo->prepare($sql);
-
-        if (count($bind) > 0) {
-            foreach ($bind as $key => $value) {
-                $this->bind($key, $value);
-            }
+        
+        if (!empty($this->sql) 
+        && substr($this->sql, 0, 6) == 'SELECT' 
+        && strpos($this->sql, 'WHERE') === false) {
+            $this->sql .= ' WHERE';
         }
 
-        $this->execute();
+        if (empty($this->sql)) {
+            $this->sql = ' WHERE';
+        }
 
-        if ($asObject) {
-            return $this->parseAsObject($firstOnly);
+        if (is_null($value) || $boolean == 'OR') {
+            list($key, $operator, $value) = array($key, '=', $operator);
         }
-        else {
-            if($firstOnly){
-                return $this->single();
-            }else{
-                return $this->resultset();
-            }
+
+        $param = $key;
+        if (strpos($this->sql, ':' . $key) !== false) {
+            $key = $param . '_' . uniqid();
         }
+
+        $sql_key = ($operator == 'IN' || $operator == 'NOT IN')
+        ? '(:'.$key.')' : ':'.$key;
+
+        $this->sql .= (substr($this->sql, -6) == ' WHERE')
+            ? ' ' . "$param $operator $sql_key"
+            : ' ' . $boolean . ' ' . "$param $operator $sql_key";
+
+        $this->params[$key] = $value;
+
+        return $this;
+    }
+
+    /**
+     *    @see ModelInterface::orwhere()
+     */
+    public function orWhere($key, $operator = null, $value = null)
+    {
+        return $this->where($key, $operator, $value, 'OR');
+    }
+
+    /**
+     * @param $sql
+     * @param null $value
+     * @return mixed
+     */
+    public function whereRaw($sql, $value = null)
+    {
+        if (!empty($this->sql) && substr($this->sql, 0, 6) == 'SELECT') $this->sql .= ' WHERE ';
+        if (empty($this->sql)) $this->sql = ' WHERE ';
+        $this->sql .= $sql;
+        if (!is_null($value)) $this->params = array_merge($this->params,(array)$value );
+        return $this;
+    }
+
+    /**
+     * @param $value
+     * @param string $order
+     * @return mixed
+     */
+    public function orderBy($value, $order = 'ASC')
+    {
+        $this->sql .= ' ORDER BY ' . $value . ' ' . $order;
+        return $this;
+    }
+
+    /**
+     * @param $limit
+     * @param null $first
+     * @param bool $single
+     * @internal param bool $array
+     * @return mixed
+     */
+    public function take($limit,$first = null, $single = false)
+    {
+        if(is_null($this->sql))
+            $this->sql = 'SELECT * FROM ' . $this->table . ' '. $this->alias;
+        $this->sql .= ' LIMIT '.$limit;
+        if(!is_null($first))$this->sql .= ' OFFSET '.$first;
+        $result = $this->execQuery($this->sql,$this->params);
+        $result = $result->fetchAll(PDO::FETCH_OBJ);
+        $this->sql = null;
+        $this->params = [];
+        return ($single && count($result) == 1)
+            ? new PdoSingleResult($result[0],function(){return $this;})
+            : new IteratorResult($result);
+    }
+
+    /**
+     * @param bool $single
+     * @return mixed
+     */
+    public function get($single = false)
+    {
+        if(is_null($this->sql))return new PdoSingleResult($this->getInstance(),function(){return $this;});
+        $this->sql = (substr($this->sql, 0, 6) !== 'SELECT') ? 'SELECT * FROM ' . $this->table . ' ' . $this->alias .$this->sql : $this->sql;
+        $result = $this->execQuery($this->sql,$this->params);
+        $this->sql = null;$this->params = [];
+        $result = $result->fetchAll(PDO::FETCH_OBJ);
+        return ($single && count($result) == 1) ? new PdoSingleResult($result[0],function(){return $this;}) : new IteratorResult($result);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function count()
+    {
+        $this->sql = 'SbELECT COUNT(*) FROM ' . $this->table . ' ' .$this->alias. $this->sql;
+        $result = $this->execQuery($this->sql,$this->params);
+        $this->sql = null;$this->params = [];
+        return $result->fetch()[0];
+    }
+
+    /**
+     * @param int|string $id
+     * @param null $contents
+     * @return mixed
+     */
+    public function update($id, $contents = null)
+    {
+        $this->sql = 'WHERE id = :id';
+        $this->params['id'] = $id;
+        return (is_null($contents))?$this:$this->add($contents);
+    }
+
+    /**
+     * @param $contents
+     * @return mixed
+     */
+    public function with($contents)
+    {
+        return (substr($this->sql, 0, -5) == 'WHERE')
+            ? $this->add($contents)
+            : $this->insert($contents);
+    }
+
+    /**
+     * @param $contents
+     * @return mixed
+     */
+    public function set($contents)
+    {
+        $sql = '';
+        foreach($contents as $key => $value)
+            $sql .= $key.' = :'.$key.',';
+        $result = $this->pdo->prepare('UPDATE '.$this->table.' SET '.substr($sql, 0, -1).$this->sql);
+        $this->params = array_merge($contents,$this->params);
+        foreach($this->params as $key => $value)
+            $result->bindValue($key,$value);
+        $this->sql = null;
+        $this->params = [];
+        return $result->execute();
+    }
+
+    /**
+     * @param null $contents
+     * @return mixed
+     */
+    public function create($contents = null)
+    {
+        return is_null($contents)?$this:$this->insert($contents);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function delete()
+    {
+        $this->sql = 'DELETE FROM' . $this->table . ' '. $this->sql;
+        $query = $this->execQuery($this->sql, $this->params);
+        $this->sql = null;
+        $this->params = [];
+        return $query;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function destroy()
+    {
+        $ids = func_get_args();
+        $sql = 'DELETE FROM '.$this->table.' WHERE id IN (';
+        $params = [];
+        foreach ($ids as $key => $id) {
+            $sql .= '?,';
+            $params[] = $id;
+        }
+        $result = $this->pdo->prepare(substr($sql,0,-1).')');
+        foreach($params as $key => $value)
+            $result->bindValue($key,$value,PDO::PARAM_INT);
+        return $result->execute();
+    }
+
+    /**
+     * @param $name
+     * @param $args
+     * @return mixed
+     */
+    public function callStatic($name, $args)
+    {
+        if (method_exists($this, $name))
+            return call_user_func_array([$this, $name], $args);
+        return call_user_func_array([$this->getOrm(), $name], $args);
     }
 
     /**
@@ -221,16 +436,6 @@ class Model implements ModelInterface
         $this->execute();
 
         return ($returnLastInsertedId) ? $this->lastInsertId() : true;
-    }
-
-    /**
-     * Executa um update e retorna o numero de registros alterados
-     * @param string - SQL a ser executada
-     * @return int
-     **/
-    public function update($sql)
-    {
-        return $this->executar($sql);
     }
 
     public function execute(){
