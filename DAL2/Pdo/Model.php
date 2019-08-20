@@ -2,6 +2,8 @@
 
 namespace Osians\Dal\Pdo;
 
+use Osians\Dal\ModelInterface;
+
 /**
  *
  * CLASSE SYS_DB RESPONSAVEL POR FAZER A INTERFACE COM O BANCO DE DADOS,
@@ -45,25 +47,27 @@ namespace Osians\Dal\Pdo;
  *
  */
 
-class Model
+class Model implements ModelInterface
 {
-    private $dbh;
+    protected $pdo;
     protected $error;
-
     protected $stmt;
 
-    public function __construct( $conn = null ){
-        if($conn != null){
-            $this->setConn( $conn );
+    public function __construct($pdo = null)
+    {
+        if ($pdo instanceof \PDO) {
+            $this->setPdo($pdo);
         }
     }
 
-    public function setConn($dbh){$this->dbh = $dbh ;}
+    public function setPdo($pdo)
+    {
+        $this->pdo = $pdo;
+    }
 
-    public function getDb(){return $this->dbh;}
-
-    public function query($query){
-        $this->stmt = $this->dbh->prepare($query);
+    public function query($query)
+    {
+        $this->stmt = $this->pdo->prepare($query);
         return $this->stmt;
     }
     /*
@@ -75,9 +79,25 @@ class Model
             print $row['calories'] . "\n";
         }
     */
-    public function sql($sqlQuery)
+    // public function sql($sqlQuery)
+    // {
+    //     return $this->pdo->query($sqlQuery);
+    // }
+
+
+    /**
+     * @param $sql
+     * @param array $params
+     * @return mixed
+     */
+    public function sql($sql, $params = [])
     {
-        return $this->dbh->query($sqlQuery);
+        if (substr(strtolower($sql), 0, 6) !== 'select') {
+            return $this->pdo->exec($sql);
+        }
+
+        $results = $this->pdo->query($sql);
+        return $results->fetchAll(PDO::FETCH_OBJ);
     }
 
     public function bind($param, $value, $type = null)
@@ -220,7 +240,7 @@ class Model
      */
     public function executar($query)
     {
-        return $this->dbh->exec($query);
+        return $this->pdo->exec($query);
     }
 
     public function resultset(){
@@ -239,19 +259,19 @@ class Model
     }
 
     public function lastInsertId(){
-        return $this->dbh->lastInsertId();
+        return $this->pdo->lastInsertId();
     }
 
     public function beginTransaction(){
-        return $this->dbh->beginTransaction();
+        return $this->pdo->beginTransaction();
     }
 
     public function commit(){
-        return $this->dbh->commit();
+        return $this->pdo->commit();
     }
 
     public function roolback(){
-        return $this->dbh->rollBack();
+        return $this->pdo->rollBack();
     }
 
     public function debugDumpParams(){

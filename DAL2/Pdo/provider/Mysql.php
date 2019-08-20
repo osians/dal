@@ -2,64 +2,86 @@
 
 namespace Osians\Dal\Pdo\Provider;
 
-class Mysql implements DatabaseProviderInterface
+use PDO;
+
+class Mysql implements \Osians\Dal\DatabaseProviderInterface
 {
-    // @ default params
-    private $host   = null;
-    private $dbport = null;
-    private $user   = null;
-    private $pass   = null;
-    private $dbname = null;
-    private $dbh    = null;
-    private $error  = null;
-    private $charset= null;
+    protected $host   = null;
+    protected $dbport = null;
+    protected $user   = null;
+    protected $pass   = null;
+    protected $dbname = null;
+    protected $dbh    = null;
+    protected $error  = null;
+    protected $charset= null;
 
     /**
-     * [__construct description]
-     * @param [type] $host   [description]
-     * @param [type] $dbport [description]
-     * @param [type] $user   [description]
-     * @param [type] $pass   [description]
-     * @param [type] $dbname [description]
+     * @param array $options
      */
-    public function __construct(
-        $host = null,
-        $dbport = null,
-        $user = null,
-        $pass = null,
-        $dbname = null,
-        $charset = null)
+    public function __construct($options = [])
     {
-        if ($host != null) {
-            $this->host   = $host;
-        }
-
-        if ($user != null) {
-            $this->user   = $user;
-        }
-
-        if ($pass != null) {
-            $this->pass   = $pass;
-        }
-
-        if ($dbname != null) {
-            $this->dbname = $dbname;
-        }
-
-        if ($dbport != null) {
-            $this->dbport = $dbport;
-        }
-
-
-        $this->charset = ($charset != null ) ? $charset : 'utf8';
+        $this->setOptions($options);
     }
 
-    public function setHost($value){$this->host = $value;}
-    public function setDbport($value){$this->dbport = $value;}
-    public function setUser($value){$this->user = $value;}
-    public function setPass($value){$this->pass = $value;}
-    public function setDbname($value){$this->dbname = $value;}
+    /**
+     *    Determina as Configurações de acesso a Base de dados MySQL
+     * 
+     *    @param array $options
+     **/
+    public function setOptions($options = [])
+    {
+        $options['charset'] = isset($options['charset']) ? $options['charset'] : 'utf8';
+        $options['dbport']  = isset($options['dbport']) ? $options['dbport'] : '3306';
 
+        if (isset($options['host'])) {
+            $this->setHostname($options['host']);
+        }
+
+        if (isset($options['user'])) {
+            $this->setDatabaseUser($options['user']);
+        }
+
+        if (isset($options['pass'])) {
+            $this->setDatabaseUserPassword($options['pass']);
+        }
+
+        if (isset($options['dbname'])) {
+            $this->setDatabaseName($options['dbname']);
+        }
+
+        $this->setDatabasePort($options['dbport']);
+        $this->setDatabaseCharset($options['charset']);
+    }
+
+    public function setHostname($host){
+        $this->host = $host;
+    }
+
+    public function setDatabasePort($port){
+        $this->dbport = $port;
+    }
+
+    public function setDatabaseUser($user){
+        $this->user = $user;
+    }
+
+    public function setDatabaseUserPassword($pass){
+        $this->pass = $pass;
+    }
+
+    public function setDatabaseName($name){
+        $this->dbname = $name;
+    }
+
+    public function setDatabaseCharset($charset){
+        $this->charset = $charset;
+    }
+
+    /**
+     *    realiza a conexão a uma Base de dados
+     * 
+     *    @return PDO
+     **/
     public function conectar()
     {
         $dsn = "mysql:host={$this->host};dbname={$this->dbname};charset={$this->charset};";
@@ -79,12 +101,15 @@ class Mysql implements DatabaseProviderInterface
             );
         }
     }
-
-    public function desconectar()
-    {
-        
-    }
     
+    /**
+     *    Dado um codigo numerico qualquer, tenta identificar o erro
+     *    na lista dos codigos mais conhecidos.
+     *
+     *    @param integer $eCode
+     * 
+     *    @return string
+     **/
     public function getExceptionByCode($eCode)
     {
         switch ($eCode) {
@@ -109,5 +134,12 @@ class Mysql implements DatabaseProviderInterface
         }
 
         return "{$message}. Código do Erro: {$e->getCode()}";
+    }
+
+    /**
+     *    Desconecta do Banco de dados
+     **/
+    public function desconectar()
+    {
     }
 }
