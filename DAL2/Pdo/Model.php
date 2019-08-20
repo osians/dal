@@ -52,6 +52,7 @@ class Model implements ModelInterface
     protected $pdo;
     protected $error;
     protected $stmt;
+    protected $table;
 
     public function __construct($pdo = null)
     {
@@ -65,27 +66,21 @@ class Model implements ModelInterface
         $this->pdo = $pdo;
     }
 
-    public function query($query)
+    /**
+     *    @see ModelInterface::setTable()
+     */
+    public function setTable($table)
     {
-        $this->stmt = $this->pdo->prepare($query);
-        return $this->stmt;
+        $this->class = $table;
+        $class = explode('\\', $table);
+        $class = strtolower(preg_replace('/\B([A-Z])/', '_$1', end($class)));
+        $this->table = isset($this->options['prefix'])?$this->options['prefix'] . TextTransform::pluralize($class):TextTransform::pluralize($class);
+        $this->alias = substr($class, 0, 1);
+        return $this;
     }
-    /*
-        Para consultas tal como :
-        $sql = 'SELECT name, color, calories FROM fruit ORDER BY name';
-        foreach ($conn->query($sql) as $row) {
-            print $row['name'] . "\t";
-            print $row['color'] . "\t";
-            print $row['calories'] . "\n";
-        }
-    */
-    // public function sql($sqlQuery)
-    // {
-    //     return $this->pdo->query($sqlQuery);
-    // }
-
 
     /**
+     *    Realiza uma consulta SQL
      * @param $sql
      * @param array $params
      * @return mixed
@@ -98,6 +93,15 @@ class Model implements ModelInterface
 
         $results = $this->pdo->query($sql);
         return $results->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     *    @see ModelInterface::all();
+     */
+    public function all()
+    {
+        $results = $this->pdo->query("SELECT * FROM {$this->table}");
+        return new IteratorResult($results->fetchAll(PDO::FETCH_OBJ));
     }
 
     public function bind($param, $value, $type = null)
@@ -120,6 +124,7 @@ class Model implements ModelInterface
         $this->stmt->bindValue($param, $value, $type);
     }
 
+    //    talvez remover
     private function parseAsObject($firstOnly = false)
     {
         $objeto  = new \stdClass;
@@ -153,7 +158,9 @@ class Model implements ModelInterface
         return $retorno;
     }
 
-    public function selectFirst($sql, $bind = array()) {
+    //    talvez remover
+    public function selectFirst($sql, $bind = array())
+    {
         return $this->select($sql, $bind, true, true);
     }
 
@@ -162,13 +169,14 @@ class Model implements ModelInterface
         $bind = array(),
         $asObject = true,
         $firstOnly = false
-    ){
-        $this->query($sql);
-        if(count($bind)>0):
+    ) {
+        $this->stmt = $this->pdo->prepare($sql);
+
+        if (count($bind) > 0) {
             foreach ($bind as $key => $value) {
-                $this->bind( $key, $value );
+                $this->bind($key, $value);
             }
-        endif;
+        }
 
         $this->execute();
 
@@ -191,27 +199,28 @@ class Model implements ModelInterface
      *   array(':fname' => 'John',':lname'=>'Smith',':age','24',':gender'=>'male'),
      *   true
      * );
-     * @param  [type]  $sql                     [description]
-     * @param  array   $bind                      [description]
-     * @param  boolean $__return_last_inserted_id__ [description]
-     * @return [type]                               [description]
+     * @param  string  $sql
+     * @param  array   $bind
+     * @param  boolean $returnLastInsertedId
+     *
+     * @return int|bool
      */
     public function insert(
         $sql,
         $bind = array(),
-        $__return_last_inserted_id__ = true )
-    {
-        $this->query( $sql );
+        $returnLastInsertedId = true
+    ) {
+        $this->stmt = $this->pdo->prepare($sql);
 
-        if(count($bind)>0):
-            foreach ($$bind as $key => $value) {
-                $this->bind( $key, $value );
+        if (count($bind) > 0) {
+            foreach ($bind as $key => $value) {
+                $this->bind($key, $value);
             }
-        endif;
+        }
 
         $this->execute();
 
-        return ($__return_last_inserted_id__) ? $this->lastInsertId() : true;
+        return ($returnLastInsertedId) ? $this->lastInsertId() : true;
     }
 
     /**
@@ -219,7 +228,8 @@ class Model implements ModelInterface
      * @param string - SQL a ser executada
      * @return int
      **/
-    public function update( $sql ){
+    public function update($sql)
+    {
         return $this->executar($sql);
     }
 

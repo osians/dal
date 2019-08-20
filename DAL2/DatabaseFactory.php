@@ -11,16 +11,34 @@ class DatabaseFactory
      *
      *    @return object - Osians\Dal\Pdo\Model
      **/
-    public static function create($database, $options = array())
+    public static function create($options = array())
     {
-        if (!isset($options) || empty($options)) {
-            throw new \Exception('Missing arguments for PDO constructor');
-        }
+        $this->isValid($options);
 
-        $class = "\Osians\Dal\Pdo\Provider\\$database";
+        $class = "\Osians\Dal\Pdo\Provider\\{$options['driver']}";
         $database = new $class($options);
         $conn = $database->conectar();
 
         return new \Osians\Dal\Pdo\Model($conn);
+    }
+
+    /**
+     *    Verifica se parametros contemplam requisitos minimos
+     *
+     *    @param  array  $options
+     *
+     *    @return boolean
+     */
+    protected function isValid($options)
+    {
+        if (!isset($options['driver'])) {
+            throw new \Exception('Missing driver name');
+        }
+
+        if (!isset($options) || empty($options)) {
+            throw new \Exception('Missing arguments for PDO constructor');
+        }
+
+        return true;
     }
 }
