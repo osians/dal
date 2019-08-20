@@ -21,22 +21,19 @@ $options = [
 $model = DatabaseFactory::create($options);
 
 // $rs = $model->select('SELECT * FROM usuario');
-
 // var_dump($rs);
-
-
  
  // Model facade
- $db = new \Osians\Dal\Doctrine\DoctrineModel($options);
- Osians\Dal\Model::init($db);
+// $db = new \Osians\Dal\Doctrine\DoctrineModel($options);
+// Osians\Dal\Model::init($db);
  
  // or for lazy loading
- $db = [
-     'doctrine' => function() use ($options) {
-         new \Osians\Dal\Doctrine\DoctrineModel($options);
-     }
- ]
- Osians\Dal\Model::provide($db);
+ // $db = [
+ //     'doctrine' => function() use ($options) {
+ //         new \Osians\Dal\Doctrine\DoctrineModel($options);
+ //     }
+ // ];
+ // Osians\Dal\Model::provide($db);
  
  // And for retrieve data you have 2 possible ways
  
