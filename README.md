@@ -1,4 +1,4 @@
-## OSIANS/DAL - Database abstract layer for ORMs
+## Osians/DAL - Database abstract layer for ORMs
 (Based on : jetfirephp/db)
 
 A unique facade for orm. For the moment only Doctrine is supported but other orm like RedBean will be supported.
@@ -8,7 +8,7 @@ A unique facade for orm. For the moment only Doctrine is supported but other orm
 Via [composer](https://getcomposer.org)
 
 ```bash
-$ composer require jetfirephp/db
+$ composer require osians/dal
 ```
 
 For Doctrine usage you have to require the doctrine package
@@ -41,16 +41,16 @@ $ composer require gabordemooij/redbean
  ];
  
  // Model facade
- $db = new \JetFire\Db\Doctrine\DoctrineModel($options);
- JetFire\Db\Model::init($db);
+ $db = new \Osians\Dal\Doctrine\DoctrineModel($options);
+ Osians\Dal\Model::init($db);
  
  // or for lazy loading
  // $db = [
  //     'doctrine' => function() use ($options) {
- //         new \JetFire\Db\Doctrine\DoctrineModel($options);
+ //         new \Osians\Dal\Doctrine\DoctrineModel($options);
  //     }
  // ]
- // JetFire\Db\Model::provide($db);
+ // Osians\Dal\Model::provide($db);
  
  // And for retrieve data you have 2 possible ways
  
@@ -86,18 +86,18 @@ $config = [
 // set your orm provider
 $providers = [
     'doctrine' => function()use($config){
-        return new \JetFire\Db\Doctrine\DoctrineModel($config);
+        return new \Osians\Dal\Doctrine\DoctrineModel($config);
     },
     'redbean' => function()use($config){
-        return new \JetFire\Db\RedBean\RedBeanModel($config);
+        return new \Osians\Dal\RedBean\RedBeanModel($config);
     },
     'pdo' => function()use($config){
-        return new \JetFire\Db\Pdo\PdoModel($config);
+        return new \Osians\Dal\Pdo\PdoModel($config);
     },
 ];
 
 // pass the default orm in second argument or it will take the first given orm in providers
-JetFire\Db\Model::provide($providers,['orm'=>'pdo']);
+Osians\Dal\Model::provide($providers,['orm'=>'pdo']);
 
 $account1 = Account::orm('doctrine')->select('lastName')->where('firstName','Peter')->get();
 $account2 = Account::orm('pdo')->select('lastName')->where('firstName','Peter')->get();
@@ -140,16 +140,16 @@ $config = [
 // set your orm provider
 $providers = [
     'doctrine' => function()use($config){
-        return new \JetFire\Db\Doctrine\DoctrineModel($config);
+        return new \Osians\Dal\Doctrine\DoctrineModel($config);
     },
     'redbean' => function()use($config){
-        return new \JetFire\Db\RedBean\RedBeanModel($config);
+        return new \Osians\Dal\RedBean\RedBeanModel($config);
     },
     'pdo' => function()use($config){
-        return new \JetFire\Db\Pdo\PdoModel($config);
+        return new \Osians\Dal\Pdo\PdoModel($config);
     },
 ];
-JetFire\Db\Model::provide($providers,['orm' => 'pdo', 'db' => 'default']);
+Osians\Dal\Model::provide($providers,['orm' => 'pdo', 'db' => 'default']);
 
 $account = Account::orm('doctrine')->db('db1')->all(); 
 
@@ -387,4 +387,4 @@ $account = Account::repo()->loadParker();
 
 ### License
 
-The JetFire Db is released under the MIT public license : http://www.opensource.org/licenses/MIT. 
+The Osians Dal is released under the MIT public license : http://www.opensource.org/licenses/MIT. 

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . 'Usuario.php';
+require_once __DIR__ . '/../DAL2/Model.php';
 require_once __DIR__ . '/../DAL2/ModelInterface.php';
 require_once __DIR__ . '/../DAL2/DatabaseProviderInterface.php';
 require_once __DIR__ . '/../DAL2/Pdo/Model.php';
@@ -18,7 +20,7 @@ $options = [
     'prefix' => 'os_',
 ];
 
-$model = DatabaseFactory::create($options);
+DatabaseFactory::create($options);
 
 // $rs = $model->select('SELECT * FROM usuario');
 // var_dump($rs);
@@ -38,8 +40,8 @@ $model = DatabaseFactory::create($options);
  // And for retrieve data you have 2 possible ways
  
  // 1)
- $accounts = Model::table('Account')->all();
+ $accounts = Model::table('Usuario')->all();
  
  // 2)
- $accounts = Account::all();
- // Account.php must extends Model class
+ $accounts = Usuario::all();
+ // Usuario.php must extends Model class

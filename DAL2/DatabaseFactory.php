@@ -9,7 +9,7 @@ class DatabaseFactory
      *
      *    @param string  - Tipo de banco de dados a ser criado conexao
      *
-     *    @return object - Osians\Dal\Pdo\Model
+     *    @return object - Osians\Dal\Pdo\PdoModel
      **/
     public static function create($options = array())
     {
@@ -17,9 +17,10 @@ class DatabaseFactory
 
         $class = "\Osians\Dal\Pdo\Provider\\{$options['driver']}";
         $database = new $class($options);
-        $conn = $database->conectar();
+        $pdo = $database->conectar();
 
-        return new \Osians\Dal\Pdo\Model($conn);
+        $pdoModel = new \Osians\Dal\Pdo\PdoModel($pdo);
+        Osians\Dal\Model::init($pdoModel);
     }
 
     /**
