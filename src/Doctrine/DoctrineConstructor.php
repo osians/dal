@@ -10,26 +10,27 @@ use Doctrine\ORM\Events;
 use Doctrine\ORM\Tools\Setup;
 use Osians\Dal\DbConstructorInterface;
 
-
 /**
  * Class DoctrineConstructor
  * @package Osians\Dal\Doctrine
  */
 class DoctrineConstructor implements DbConstructorInterface
 {
-
     /**
-     * @var EntityManager
+     *    @var EntityManager
      */
     protected $em;
+
     /**
-     * @var
+     * @var array
      */
     protected $options;
+
     /**
      * @var array
      */
     private $db;
+
     /**
      * @var array
      */
@@ -42,13 +43,14 @@ class DoctrineConstructor implements DbConstructorInterface
     public function __construct($database = [], $params = [])
     {
         $this->db = $database;
-        foreach ($this->db as $key => $db) {
+
+        foreach ($this->db as $key => $db)
+        {
             $this->allDb[$key] = function () use ($db, $params) {
                 $db['dev'] = (isset($db['dev']) && $db['dev']) ? true : false;
+                
                 if (isset($db['db_url'])) {
-                    $dbParams = array(
-                        'url' => $db['db_url']
-                    );
+                    $dbParams = array('url' => $db['db_url']);
                 } else {
                     if (!isset($db['driver']) || !isset($db['user']) || !isset($db['pass']) || !isset($db['host']) || !isset($db['db']))
                         throw new \Exception('Missing arguments for doctrine constructor');
@@ -61,6 +63,7 @@ class DoctrineConstructor implements DbConstructorInterface
                         'charset' => isset($db['charset']) ? $db['charset'] : 'utf8',
                     );
                 }
+                
                 $config = Setup::createAnnotationMetadataConfiguration($db['path'], $db['dev']);
                 $this->setEnv($db, $params, $config);
                 $this->setFunctions($params, $config);
@@ -146,9 +149,9 @@ class DoctrineConstructor implements DbConstructorInterface
     }
 
     /**
-     * @param $name
-     * @return $this
-     * @throws \Exception
+     *    Seta Nome do Banco de Dados
+     *
+     *    @see - DbConstructorInterface::setDb()
      */
     public function setDb($name)
     {

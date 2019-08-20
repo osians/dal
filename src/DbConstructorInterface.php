@@ -2,22 +2,24 @@
 
 namespace Osians\Dal;
 
-
 /**
- * Interface DbConstructorInterface
- * @package Osians\Dal
+ *    Database Constructor Interface
+ *
+ *    @package Osians\Dal
  */
 interface DbConstructorInterface {
 
     /**
-     * @param array $options
+     *    @param array $options
      */
     public function __construct($options = []);
 
     /**
-     * @param $name
-     * @return mixed
+     *   Informa nome do Banco de Dados a ser usado
+     *
+     *   @param string $name
+     *
+     *   @return $this
      */
     public function setDb($name);
-
-} 
+}

@@ -242,7 +242,7 @@ class PdoModel extends PdoConstructor implements ModelInterface
      */
     public function count()
     {
-        $this->sql = 'SELECT COUNT(*) FROM ' . $this->table . ' ' .$this->alias. $this->sql;
+        $this->sql = 'SbELECT COUNT(*) FROM ' . $this->table . ' ' .$this->alias. $this->sql;
         $result = $this->execQuery($this->sql,$this->params);
         $this->sql = null;$this->params = [];
         return $result->fetch()[0];

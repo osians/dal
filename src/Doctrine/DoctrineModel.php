@@ -2,7 +2,7 @@
 
 namespace Osians\Dal\Doctrine;
 
-use Doctrine\ORM\Query;
+use Doctrine\ORM\QsetDatabaseuery;
 use Doctrine\ORM\Query\ResultSetMapping;
 use Osians\Dal\IteratorResult;
 use Osians\Dal\ModelInterface;
@@ -68,10 +68,6 @@ class DoctrineModel extends DoctrineConstructor implements ModelInterface
         return $this->table;
     }
 
-//|---------------------------------------------------------------------------------|
-//| Getters are managed here                                                        |
-//|---------------------------------------------------------------------------------|
-
     /**
      * @return \Doctrine\ORM\EntityManager
      */
@@ -104,18 +100,12 @@ class DoctrineModel extends DoctrineConstructor implements ModelInterface
         return $query->getResult();
     }
 
-
-//|---------------------------------------------------------------------------------|
-//| Reading method are managed here                                                 |
-//|---------------------------------------------------------------------------------|
-
-
     /**
      * @return array
      */
     public function all()
     {
-        return new IteratorResult($this->repo($this->class)->findAll(), 'doctrine');
+        return new IteratorResult($this->repo()->findAll(), 'doctrine');
     }
 
     /**
@@ -446,9 +436,6 @@ class DoctrineModel extends DoctrineConstructor implements ModelInterface
         return call_user_func_array([$this->repo(), $name], $args);
     }
 
-//|---------------------------------------------------------------------------------|
-//| Custom methods                                                                  |
-//|---------------------------------------------------------------------------------|
     /**
      * @return \Doctrine\ORM\EntityManager
      */
