@@ -2,22 +2,49 @@
 
 namespace Osians\Dal\Pdo;
 
+
+use Osians\Dal\IteratorResult;
 use Osians\Dal\ModelInterface;
+use Osians\Dal\TextTransform;
+use PDO;
 
-
-class PdoModel implements ModelInterface
+/**
+ * Class PdoModel
+ * @package Osians\Dal\Pdo
+ */
+class PdoModel extends PdoConstructor implements ModelInterface
 {
     protected $pdo;
-    protected $error;
-    protected $stmt;
-    protected $table;
 
-    public function __construct($pdo = null)
-    {
-        if ($pdo instanceof \PDO) {
-            $this->setPdo($pdo);
-        }
-    }
+    /**
+     * @var
+     */
+    public $class;
+    
+    /**
+     * @var
+     */
+    public $table;
+    
+    /**
+     * @var
+     */
+    public $alias;
+    
+    /**
+     * @var
+     */
+    public $sql;
+    
+    /**
+     * @var array
+     */
+    public $params = [];
+    
+    /**
+     * @var
+     */
+    public $instance;
 
     public function setPdo($pdo)
     {
@@ -25,7 +52,8 @@ class PdoModel implements ModelInterface
     }
 
     /**
-     *    @see ModelInterface::setTable()
+     * @param $table
+     * @return $this
      */
     public function setTable($table)
     {
@@ -50,9 +78,9 @@ class PdoModel implements ModelInterface
      */
     public function repo()
     {
-        if (isset($this->options['repositories']) 
+        if (isset($this->options['repositories'])
         && is_array($this->options['repositories'])) {
-            foreach($this->options['repositories'] as $repo) {
+            foreach ($this->options['repositories'] as $repo) {
                 
                 $class = explode('\\', $this->class);
                 $class = end($class);
@@ -91,60 +119,6 @@ class PdoModel implements ModelInterface
         return $results->fetchAll(PDO::FETCH_OBJ);
     }
 
-    public function bind($param, $value, $type = null)
-    {
-        if (is_null($type)) {
-            switch (true) {
-                case is_int($value):
-                    $type = \PDO::PARAM_INT;
-                    break;
-                case is_bool($value):
-                    $type = \PDO::PARAM_BOOL;
-                    break;
-                case is_null($value):
-                    $type = \PDO::PARAM_NULL;
-                    break;
-                default:
-                    $type = \PDO::PARAM_STR;
-            }
-        }
-        $this->stmt->bindValue($param, $value, $type);
-    }
-
-    //    talvez remover
-    private function parseAsObject($firstOnly = false)
-    {
-        $objeto  = new \stdClass;
-        $retorno = array();
-        $result  = ($firstOnly)
-                 ? $this->single()
-                 : $this->resultset();
-
-        if ($result === false) {
-            return false;
-        }
-
-        # se primeira row apenas ...
-        if ($firstOnly) {
-            foreach ($result as $key => $value) {
-                $oKey = strtolower($key);
-                $objeto->$oKey = $value;
-            }
-            return $objeto;
-        }
-
-        foreach ($result as $row) {
-            $objeto = new \stdClass;
-            foreach ($row as $key => $value) {
-                $oKey = strtolower($key);
-                $objeto->$oKey = $value;
-            }
-            $retorno[] = $objeto;
-        }
-
-        return $retorno;
-    }
-
     /**
      *    @see ModelInterface::all()
      */
@@ -154,8 +128,7 @@ class PdoModel implements ModelInterface
             "SELECT * FROM {$this->table}"
         );
 
-        return new IteratorResult(
-            $results->fetchAll(PDO::FETCH_OBJ));
+        return new IteratorResult($results->fetchAll(PDO::FETCH_OBJ));
     }
 
     /**
@@ -396,6 +369,13 @@ class PdoModel implements ModelInterface
     }
 
     /**
+     * @return int
+     */
+    public function clear(){
+        return $this->pdo->exec('TRUNCATE TABLE '.$this->table);
+    }
+
+    /**
      * @param $name
      * @param $args
      * @return mixed
@@ -408,88 +388,68 @@ class PdoModel implements ModelInterface
     }
 
     /**
-     * [insert description]
-     * Ex. de uso : $rs = $database->insert(
-     *   'INSERT INTO mytable (FName, LName, Age, Gender) VALUES (:fname, :lname, :age, :gender)',
-     *   array(':fname' => 'John',':lname'=>'Smith',':age','24',':gender'=>'male'),
-     *   true
-     * );
-     * @param  string  $sql
-     * @param  array   $bind
-     * @param  boolean $returnLastInsertedId
-     *
-     * @return int|bool
+     * @param $contents
+     * @return bool
      */
-    public function insert(
-        $sql,
-        $bind = array(),
-        $returnLastInsertedId = true
-    ) {
-        $this->stmt = $this->pdo->prepare($sql);
-
-        if (count($bind) > 0) {
-            foreach ($bind as $key => $value) {
-                $this->bind($key, $value);
-            }
-        }
-
-        $this->execute();
-
-        return ($returnLastInsertedId) ? $this->lastInsertId() : true;
-    }
-
-    public function execute(){
-        try{
-            return $this->stmt->execute();
-        }catch(PDOException $e){
-            throw new DBException( $e->getMessage() , $e->getCode() );
-        }
+    public function add($contents){
+        $sql = '';
+        foreach($contents as $key => $value)
+            $sql .= $key.' = :'.$key.',';
+        $result = $this->pdo->prepare('UPDATE '.$this->table.' SET '.substr($sql, 0, -1).' '.$this->sql);
+        foreach($contents as $key => $value)
+            $result->bindValue($key,$value);
+        $result->bindValue('id',$this->params['id'],PDO::PARAM_INT);
+        $this->sql = '';
+        $this->params = [];
+        return $result->execute();
     }
 
     /**
-     *
-     * @doc http://php.net/manual/pt_BR/pdo.exec.php
-     *
-     * @param  [type] $query [description]
-     * @return [type]            [description]
+     * @param $contents
+     * @return bool
      */
-    public function executar($query)
-    {
-        return $this->pdo->exec($query);
+    public function insert($contents){
+        $values = '';
+        foreach($contents as $key => $value) {
+            $this->sql .= $key . ',';
+            $values .= ':'.$key.',';
+        }
+        $result = $this->pdo->prepare('INSERT INTO '.$this->table.'('.substr($this->sql, 0, -1).') VALUES ('.substr($values,0,-1).')');
+        foreach($contents as $key => $value)
+            $result->bindValue($key,$value);
+        return $result->execute();
     }
 
-    public function resultset(){
-        $this->execute();
-        return $this->stmt->fetchAll(\PDO::FETCH_ASSOC);
+    /**
+     * @param $sql
+     * @param array $params
+     * @return \PDOStatement
+     */
+    private function execQuery($sql,$params = []){
+        $query = $this->pdo->prepare($sql);
+        foreach($params as $key => $value) {
+            if(is_object($value))
+                $this->objectToValue($query,$key,$value);
+            else {
+                if (is_int($value))
+                    $query->bindValue($key, $value, PDO::PARAM_INT);
+                elseif (is_string($value))
+                    $query->bindValue($key, $value, PDO::PARAM_STR);
+                else
+                    $query->bindValue($key, $value);
+            }
+        }
+        $query->execute();
+        return $query;
     }
 
-    public function single(){
-        $this->execute();
-        return $this->stmt->fetch(\PDO::FETCH_ASSOC);
-    }
-
-    public function rowCount(){
-        $this->execute();
-        return $this->stmt->rowCount();
-    }
-
-    public function lastInsertId(){
-        return $this->pdo->lastInsertId();
-    }
-
-    public function beginTransaction(){
-        return $this->pdo->beginTransaction();
-    }
-
-    public function commit(){
-        return $this->pdo->commit();
-    }
-
-    public function roolback(){
-        return $this->pdo->rollBack();
-    }
-
-    public function debugDumpParams(){
-        return $this->stmt->debugDumpParams();
+    /**
+     * @param \PDOStatement $query
+     * @param $key
+     * @param $value
+     */
+    private function objectToValue(&$query,$key,$value){
+        if($value instanceof \DateTime)
+            $query->bindValue($key,$value->format('Y-m-d H:i:s'));
     }
 }

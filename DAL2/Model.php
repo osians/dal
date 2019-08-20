@@ -33,6 +33,7 @@ namespace Osians\Dal;
  */
 class Model
 {
+
     /**
      * @var \Osians\Dal\Pdo\PdoModel|\Osians\Dal\Doctrine\DoctrineModel|\Osians\Dal\RedBean\RedBeanModel
      */
@@ -41,8 +42,8 @@ class Model
     /**
      * @var
      */
-    public static $allOrm;
-
+    public static $_allOrm;
+    
     /**
      * @var
      */
@@ -206,17 +207,21 @@ class Model
      * @param $args
      * @return mixed
      */
-    private static function call($name,$args){
-        if(is_null(self::$_class) || self::$_class != get_called_class())
+    private static function call($name, $args)
+    {
+        if (is_null(self::$_class) ||
+            self::$_class != get_called_class()) {
             self::$_class = get_called_class();
+        }
+
         self::table(self::$_class);
         self::$orm->setTable(self::$_class);
+        
         $call = self::$orm->callStatic($name, $args);
-        if(!self::$_keepLast) {
+        if (!self::$_keepLast) {
             self::$orm = null;
             self::$database = null;
         }
         return $call;
     }
-
-} 
+}
