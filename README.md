@@ -1,5 +1,4 @@
 ## Osians/DAL - Database abstract layer for ORMs
-(Based on : jetfirephp/db)
 
 A unique facade for orm. For the moment only Doctrine is supported but other orm like RedBean will be supported.
 

@@ -14,20 +14,20 @@ class Usuario extends Model
      * @Column(type="integer")
      * @GeneratedValue
      */
-    protected $id;
+    protected $id_usuario;
     
     /**
      * @Column(type="string",name="name",length=32)
      */
-    protected $name;
+    protected $nome;
     
     /**
      * @Column(type="string",name="last_name",length=32)
      */
-    protected $active;
+    protected $email;
 
     /**
-     * @Column(type="string",unique=true)
+     * @Column(type="bool",unique=true)
      */
-    protected $email;
+    protected $ativo;
 }

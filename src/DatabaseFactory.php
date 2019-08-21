@@ -19,8 +19,9 @@ class DatabaseFactory
         $database = new $class($options);
         $pdo = $database->conectar();
 
+        /* @var ModelInterface - ORM */
         $pdoModel = new \Osians\Dal\Pdo\PdoModel($pdo);
-        Osians\Dal\Model::init($pdoModel);
+        \Osians\Dal\Model::init($pdoModel);
     }
 
     /**

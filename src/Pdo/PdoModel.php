@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types = 1);
 
 namespace Osians\Dal\Pdo;
 
@@ -12,41 +12,85 @@ use PDO;
  * Class PdoModel
  * @package Osians\Dal\Pdo
  */
-class PdoModel extends PdoConstructor implements ModelInterface
+class PdoModel implements ModelInterface
 {
+    protected $pdo;
+
+    /**
+     * @var array
+     */
+    private $db = [];
+
+    private $allDb = [];
 
     /**
      * @var
      */
     public $class;
+    
     /**
      * @var
      */
     public $table;
+    
     /**
      * @var
      */
     public $alias;
+    
     /**
      * @var
      */
     public $sql;
+    
     /**
      * @var array
      */
     public $params = [];
+    
     /**
      * @var
      */
     public $instance;
 
     /**
-     * @return mixed
+     * @param array $db
+     * @param array $params
+     * @throws \Exception
      */
-    public function getInstance(){
-        if(is_null($this->instance))
-            $this->instance = new $this->class;
-        return $this->instance;
+    public function __construct($db = [], $params = [])
+    {
+        $this->setOrm($db);
+
+        // $this->db = $db;
+        // foreach ($this->db as $key => $db) {
+        //     if (!isset($db['driver']) || !isset($db['user']) || !isset($db['pass']) || !isset($db['host']) || !isset($db['db'])) {
+        //         throw new \Exception('Missing arguments for PDO constructor');
+        //     }
+
+        //     $this->allDb[$key] = function() use($db) {
+        //         return new PDO($db['driver'] . ':host=' . $db['host'] . ';dbname=' . $db['db'], $db['user'], $db['pass']);
+        //     };
+        // }
+    }
+
+    public function setOrm($pdo)
+    {
+        if (!($pdo instanceof \PDO)) {
+            return false;
+        }
+
+        $this->pdo = $pdo;
+        return $this;
+    }
+
+    /**
+     *    Retorna a ORM
+     *    @return PDO
+     */
+    public function getOrm()
+    {
+        return $this->pdo;
     }
 
     /**
@@ -55,11 +99,22 @@ class PdoModel extends PdoConstructor implements ModelInterface
      */
     public function setTable($table)
     {
-        $this->class = $table;
+        $this->setClass($table);
+
         $class = explode('\\', $table);
         $class = strtolower(preg_replace('/\B([A-Z])/', '_$1', end($class)));
-        $this->table = isset($this->options['prefix'])?$this->options['prefix'] . TextTransform::pluralize($class):TextTransform::pluralize($class);
+
+        $this->table = isset($this->options['prefix'])
+                     ? $this->options['prefix'] . $class : $class;
+
         $this->alias = substr($class, 0, 1);
+
+        return $this;
+    }
+
+    public function setClass($class)
+    {
+        $this->class = $class;
         return $this;
     }
 
@@ -76,100 +131,130 @@ class PdoModel extends PdoConstructor implements ModelInterface
      */
     public function repo()
     {
-        if(isset($this->options['repositories']) && is_array($this->options['repositories']))
-            foreach($this->options['repositories'] as $repo) {
-                $class = explode('\\', $this->class);$class = end($class);
+        if (isset($this->options['repositories'])
+        && is_array($this->options['repositories'])) {
+            foreach ($this->options['repositories'] as $repo) {
+                
+                $class = explode('\\', $this->class);
+                $class = end($class);
+
                 if (is_file(rtrim($repo['path'], '/') . '/' . $class . 'Repository.php')) {
                     $class = $repo['namespace']  . $class . 'Repository';
                     return new $class();
                 }
             }
+        }
+
         return null;
     }
 
     /**
-     * @return mixed
-     */
-    public function getOrm()
-    {
-        return $this->pdo;
-    }
-
-    /**
+     *    Realiza uma consulta SQL
      * @param $sql
      * @param array $params
      * @return mixed
      */
     public function sql($sql, $params = [])
     {
-        if(substr(strtolower($sql), 0, 6) !== 'select')
+        if (substr(strtolower($sql), 0, 6) !== 'select') {
             return $this->pdo->exec($sql);
+        }
+
         $results = $this->pdo->query($sql);
         return $results->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
-     * @return mixed
+     *    @see ModelInterface::all()
      */
     public function all()
     {
-        $results = $this->pdo->query('SELECT * FROM '.$this->table);
+        $results = $this->pdo->query(
+            "SELECT * FROM {$this->table}"
+        );
+
         return new IteratorResult($results->fetchAll(PDO::FETCH_OBJ));
     }
 
     /**
-     * @param $id
-     * @return mixed
+     *    @see ModelInterface::find()
      */
     public function find($id)
     {
-        $result = $this->pdo->prepare('SELECT * FROM '.$this->table.' WHERE id = :id');
-        $result->bindValue('id',$id,PDO::PARAM_INT);
-        $result->execute();
-        return new PdoSingleResult($result->fetch(PDO::FETCH_OBJ),function(){return $this;});
-    }
+        $result = $this->pdo->prepare(
+            "SELECT * FROM {$this->table} WHERE id = :id"
+        );
 
+        $result->bindValue('id', $id, PDO::PARAM_INT);
+        $result->execute();
+
+        return new PdoSingleResult(
+            $result->fetch(PDO::FETCH_OBJ),
+            function(){
+                return $this;
+            }
+        );
+    }
+    
     /**
-     * @return mixed
-     */
+     *    Recebe N Strings, sendo estas nomes de colunas
+     *    @see ModelInterface::select()
+     **/
     public function select()
     {
-        $this->sql = 'SELECT';
         $args = func_get_args();
-        if (count($args) == 0) $this->sql .= ' *,';
-        foreach ($args as $arg)
-            $this->sql .= ' ' . $arg . ',';
-        $this->sql = substr($this->sql, 0, -1) . ' FROM ' . $this->table;
+
+        $this->sql = "SELECT";
+        $this->sql.= (count($args) == 0)
+                   ? ' * ' : implode(', ', $args);
+        $this->sql.= " FROM {$this->table}";
+
         return $this;
     }
 
     /**
-     * @param $key
-     * @param null $operator
-     * @param null $value
-     * @param string $boolean
-     * @return mixed
+     *    @see ModelInterface::where()
      */
-    public function where($key, $operator = null, $value = null, $boolean = "AND")
-    {
-        if (!empty($this->sql) && substr($this->sql, 0, 6) == 'SELECT' && strpos($this->sql, 'WHERE') === false) $this->sql .= ' WHERE';
-        if (empty($this->sql)) $this->sql = ' WHERE';
-        if (is_null($value) || $boolean == 'OR') list($key, $operator, $value) = array($key, '=', $operator);
+    public function where(
+        $key, 
+        $operator = null, 
+        $value = null, 
+        $boolean = "AND"
+    ) {
+        
+        if (!empty($this->sql) 
+        && substr($this->sql, 0, 6) == 'SELECT' 
+        && strpos($this->sql, 'WHERE') === false) {
+            $this->sql .= ' WHERE';
+        }
+
+        if (empty($this->sql)) {
+            $this->sql = ' WHERE';
+        }
+
+        if (is_null($value) || $boolean == 'OR') {
+            list($key, $operator, $value) = array($key, '=', $operator);
+        }
+
         $param = $key;
-        if (strpos($this->sql, ':' . $key) !== false) $key = $param . '_' . uniqid();
-        $sql_key = ($operator == 'IN' || $operator == 'NOT IN') ? '(:'.$key.')' : ':'.$key;
+        if (strpos($this->sql, ':' . $key) !== false) {
+            $key = $param . '_' . uniqid();
+        }
+
+        $sql_key = ($operator == 'IN' || $operator == 'NOT IN')
+        ? '(:'.$key.')' : ':'.$key;
+
         $this->sql .= (substr($this->sql, -6) == ' WHERE')
             ? ' ' . "$param $operator $sql_key"
             : ' ' . $boolean . ' ' . "$param $operator $sql_key";
+
         $this->params[$key] = $value;
+
         return $this;
     }
 
     /**
-     * @param $key
-     * @param null $operator
-     * @param null $value
-     * @return mixed
+     *    @see ModelInterface::orwhere()
      */
     public function orWhere($key, $operator = null, $value = null)
     {
@@ -336,14 +421,18 @@ class PdoModel extends PdoConstructor implements ModelInterface
     }
 
     /**
-     * @param $name
-     * @param $args
-     * @return mixed
+     *    Chama um metodo desta classe estaticamente
+     *
+     *    @param string $name
+     *    @param array  $args
+     *    @return mixed
      */
     public function callStatic($name, $args)
     {
-        if (method_exists($this, $name))
+        if (method_exists($this, $name)) {
             return call_user_func_array([$this, $name], $args);
+        }
+
         return call_user_func_array([$this->getOrm(), $name], $args);
     }
 
@@ -411,5 +500,24 @@ class PdoModel extends PdoConstructor implements ModelInterface
     private function objectToValue(&$query,$key,$value){
         if($value instanceof \DateTime)
             $query->bindValue($key,$value->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * @param $name
+     * @return $this
+     * @throws \Exception
+     */
+    public function setDatabase($name)
+    {
+        $this->options = $this->db[$name];
+        
+        if (is_callable($this->allDb[$name])) {
+            $this->allDb[$name] = call_user_func($this->allDb[$name]);
+        }
+
+        $this->pdo = $this->allDb[$name];
+        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        return $name;
     }
 }

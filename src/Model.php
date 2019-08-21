@@ -33,39 +33,40 @@ namespace Osians\Dal;
  */
 class Model
 {
-
     /**
      * @var \Osians\Dal\Pdo\PdoModel|\Osians\Dal\Doctrine\DoctrineModel|\Osians\Dal\RedBean\RedBeanModel
      */
     public static $orm;
+
     /**
      * @var
      */
-    public static $_allOrm;
+    public static $allOrm;
+    
     /**
      * @var
      */
     public static $database;
+
     /**
      * @var
      */
-    public static $_default = [];
+    public static $default = [];
+
     /**
      * @var array
      */
     public static $provider = [];
+
     /**
      * @var
      */
-    public static $_class;
+    public static $class;
+
     /**
      * @var null
      */
-    public static $_instance = null;
-    /**
-     * @var
-     */
-    private static $_keepLast;
+    public static $instance = null;
 
     /**
      * @param ModelInterface $orm
@@ -76,38 +77,33 @@ class Model
     }
 
     /**
-     * @param array $provider
-     * @param array $_default
-     * @param bool $_keepLast
+     * @param $class
+     * @return Object|Model|null
      */
-    public static function provide(
-        $provider = [],
-        $_default = [],
-        $_keepLast = false
-    ) {
-        self::$provider = $provider;
-        reset($provider);
-
-        self::$_default['orm'] = (isset($_default['orm']))
-            ? $_default['orm'] : key($provider);
-
-        self::$_default['db']  = (isset($_default['db']))
-            ? $_default['db'] : 'default';
-
-        self::$_keepLast = $_keepLast;
+    public static function getInstance($class)
+    {
+        if (is_null(self::$instance) || self::$class !== $class) {
+            self::$class = $class;
+            self::$instance = new self::$class;
+        }
+        return self::$instance;
     }
 
     /**
-     * @param $_class
-     * @return Object|Model|null
+     * @param array $provider
+     * @param array $default
+     * @param bool $keepLast
      */
-    public static function getInstance($_class)
+    public static function provide($provider = [], $default = [])
     {
-        if (is_null(self::$_instance) || self::$_class !== $_class) {
-            self::$_class = $_class;
-            self::$_instance = new self::$_class;
-        }
-        return self::$_instance;
+        self::$provider = $provider;
+        reset($provider);
+
+        self::$default['orm'] = (isset($default['orm']))
+            ? $default['orm'] : key($provider);
+
+        self::$default['db']  = (isset($default['db']))
+            ? $default['db'] : 'default';
     }
 
     /**
@@ -116,9 +112,11 @@ class Model
      */
     public static function orm($name)
     {
-        if (!isset(self::$_allOrm[$name]))
-            self::$_allOrm[$name] = call_user_func(self::$provider[$name]);
-        self::$orm = self::$_allOrm[$name];
+        if (!isset(self::$allOrm[$name])) {
+            self::$allOrm[$name] = call_user_func(self::$provider[$name]);
+        }
+
+        self::$orm = self::$allOrm[$name];
         return self::getInstance(get_called_class());
     }
 
@@ -126,13 +124,13 @@ class Model
      * @param string $name
      * @return Object|Model|null
      */
-    public static function db($name)
+    public static function setDatabase($name)
     {
         if (is_null(self::$orm)) {
-            self::orm(self::$_default['orm']);
+            self::orm(self::$default['orm']);
         }
-        
-        self::$orm->setDb($name);
+        // @var $orm - PdoModel
+        self::$orm->setDatabase($name);
         self::$database = $name;
 
         return self::getInstance(get_called_class());
@@ -149,11 +147,11 @@ class Model
     public static function table($table)
     {
         if (is_null(self::$orm)) {
-            self::orm(self::$_default['orm']);
+            throw new \Exception("ORM is not defined");
         }
         
         if (is_null(self::$database)) {
-            self::db(self::$_default['db']);
+            throw new \Exception("Database is not defined");
         }
         
         return self::getInstance($table);
@@ -163,22 +161,20 @@ class Model
      * @return Object|Model|null
      */
     public static function repo(){
-        if(is_null(self::$_class) || self::$_class != get_called_class())
-            self::$_class = get_called_class();
-        self::table(self::$_class);
-        self::$orm->setTable(self::$_class);
+        if(is_null(self::$class) || self::$class != get_called_class())
+            self::$class = get_called_class();
+        self::table(self::$class);
+        self::$orm->setTable(self::$class);
         $repo = self::$orm->repo();
-        if(!self::$_keepLast) {
-            self::$orm = null;
-            self::$database = null;
-        }
         return is_null($repo)?self::getInstance(get_called_class()):$repo;
     }
 
     /**
-     * @param $name
-     * @param $args
-     * @return mixed
+     *    Metodo chamado em casos como Usuario::all();
+     *
+     *    @param $name
+     *    @param $args
+     *    @return mixed
      */
     public static function __callStatic($name, $args)
     {
@@ -200,17 +196,16 @@ class Model
      * @param $args
      * @return mixed
      */
-    private static function call($name,$args){
-        if(is_null(self::$_class) || self::$_class != get_called_class())
-            self::$_class = get_called_class();
-        self::table(self::$_class);
-        self::$orm->setTable(self::$_class);
-        $call = self::$orm->callStatic($name, $args);
-        if(!self::$_keepLast) {
-            self::$orm = null;
-            self::$database = null;
+    private static function call($name, $args)
+    {
+        if (is_null(self::$class) ||
+            self::$class != get_called_class()) {
+            self::$class = get_called_class();
         }
+
+        self::$orm->setTable(self::$class);
+        $call = self::$orm->callStatic($name, $args);
+
         return $call;
     }
-
-} 
+}

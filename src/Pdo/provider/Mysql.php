@@ -2,7 +2,7 @@
 
 namespace Osians\Dal\Pdo\Provider;
 
-use PDO;
+use \PDO;
 
 class Mysql implements \Osians\Dal\DatabaseProviderInterface
 {
@@ -25,7 +25,7 @@ class Mysql implements \Osians\Dal\DatabaseProviderInterface
 
     /**
      *    Determina as Configurações de acesso a Base de dados MySQL
-     * 
+     *
      *    @param array $options
      **/
     public function setOptions($options = [])
@@ -53,33 +53,39 @@ class Mysql implements \Osians\Dal\DatabaseProviderInterface
         $this->setDatabaseCharset($options['charset']);
     }
 
-    public function setHostname($host){
+    public function setHostname($host)
+    {
         $this->host = $host;
     }
 
-    public function setDatabasePort($port){
+    public function setDatabasePort($port)
+    {
         $this->dbport = $port;
     }
 
-    public function setDatabaseUser($user){
+    public function setDatabaseUser($user)
+    {
         $this->user = $user;
     }
 
-    public function setDatabaseUserPassword($pass){
+    public function setDatabaseUserPassword($pass)
+    {
         $this->pass = $pass;
     }
 
-    public function setDatabaseName($name){
+    public function setDatabaseName($name)
+    {
         $this->dbname = $name;
     }
 
-    public function setDatabaseCharset($charset){
+    public function setDatabaseCharset($charset)
+    {
         $this->charset = $charset;
     }
 
     /**
      *    realiza a conexão a uma Base de dados
-     * 
+     *
      *    @return PDO
      **/
     public function conectar()
@@ -96,7 +102,7 @@ class Mysql implements \Osians\Dal\DatabaseProviderInterface
         try {
             return new \PDO($dsn, $this->user, $this->pass, $options);
         } catch (PDOException $e) {
-            throw new DBException(
+            throw new \Exception(
                 $this->getExceptionByCode($e->getCode())
             );
         }
@@ -107,7 +113,7 @@ class Mysql implements \Osians\Dal\DatabaseProviderInterface
      *    na lista dos codigos mais conhecidos.
      *
      *    @param integer $eCode
-     * 
+     *
      *    @return string
      **/
     public function getExceptionByCode($eCode)

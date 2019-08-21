@@ -1,5 +1,8 @@
 <?php
 
+// talvez eliminar a classe TextTransform
+require_once __DIR__ . '/../DAL2/TextTransform.php';
+require_once __DIR__ . '/../DAL2/IteratorResult.php';
 require_once __DIR__ . '/../DAL2/Model.php';
 require_once __DIR__ . '/../DAL2/ModelInterface.php';
 require_once __DIR__ . '/../DAL2/DatabaseProviderInterface.php';
@@ -9,14 +12,15 @@ require_once __DIR__ . '/../DAL2/DatabaseFactory.php';
 require_once __DIR__ . '/Usuario.php';
 
 use Osians\Dal\DatabaseFactory;
+use Osians\Dal\Model;
 
 $options = [
     'driver' => 'Mysql',
     'host' => 'localhost',
     'port' => '3306',
     'user' => 'root',
-    'pass' => '',
-    'dbname' => 'vita',
+    'pass' => '31wsn32wsn',
+    'dbname' => 'projects',
     'prefix' => 'os_',
 ];
 
@@ -40,8 +44,13 @@ DatabaseFactory::create($options);
  // And for retrieve data you have 2 possible ways
  
  // 1)
- $accounts = Model::table('Usuario')->all();
+ // $usuarios = Model::table('Usuario')->all();
+ // var_dump(Model::$orm);
+ // die();
+ // print_r($usuarios);
  
  // 2)
- $accounts = Usuario::all();
+ $usuarios = Usuario::all();
+ print_r($usuarios);
+ 
  // Usuario.php must extends Model class
