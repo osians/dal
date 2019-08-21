@@ -18,8 +18,8 @@ $options = [
     'driver' => 'Mysql',
     'host' => 'localhost',
     'port' => '3306',
-    'user' => 'root',
-    'pass' => '31wsn32wsn',
+    'user' => 'userdb',
+    'pass' => '',
     'dbname' => 'projects',
     'prefix' => 'os_',
 ];
